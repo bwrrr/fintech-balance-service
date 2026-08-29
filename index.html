@@ -1,0 +1,47 @@
+
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Fintech Service</title>
+</head>
+<body>
+    <h2>Перевод денег</h2>
+
+    <p>Ключ идемпотентности: <input type="text" id="idempKey"></p>
+    <p>ID Отправителя: <input type="number" id="fromUser" value="1"></p>
+    <p>ID Получателя: <input type="number" id="toUser" value="2"></p>
+    <p>Сумма: <input type="number" id="amount" value="500"></p>
+
+    <button onclick="send()">Отправить перевод</button>
+
+    <h3>Результат:</h3>
+    <pre id="result">Нажмите кнопку для отправки</pre>
+
+    <script>
+        document.getElementById('idempKey').value = 'key-' + Math.random().toString(36).substring(2, 7);
+
+        function send() {
+            var data = {
+                idempotency_key: document.getElementById('idempKey').value,
+                from_user_id: Number(document.getElementById('fromUser').value),
+                to_user_id: Number(document.getElementById('toUser').value),
+                amount: Number(document.getElementById('amount').value)
+            };
+
+            fetch('/api/transfer', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            })
+            .then(res => res.text())
+            .then(text => {
+                document.getElementById('result').innerText = text;
+            })
+            .catch(err => {
+                document.getElementById('result').innerText = 'Ошибка: ' + err;
+            });
+        }
+    </script>
+</body>
+</html>
