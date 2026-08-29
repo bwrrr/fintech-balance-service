@@ -1,67 +1,53 @@
 Fintech Balance and Transfer Service
 
-Микросервис для безопасного перевода денежных средств между счетами пользователей с защитой от состояния гонки и повторных списаний.
+A microservice built with Go for secure and reliable money transfers between user accounts, featuring race condition prevention and duplicate request protection.
 
-Стек технологий
+Tech Stack
+- Go (net/http, log/slog)
+- Clean Architecture (Domain, Repository, Service, Handler)
+- PostgreSQL (ACID transactions, non-negative balance checks)
+- Redis (Idempotency keys via SetNX)
+- Apache Kafka (Asynchronous event publishing)
+- Docker and Docker Compose
 
-Go 1.22+ (стандартная библиотека net/http, структурированное логирование log/slog)
+Key Features
+- Atomic balance transfers inside a single database transaction
+- Idempotency guarantee via Redis to prevent double spending
+- Overdraft protection at both query and database levels
+- Async event publishing to Kafka upon completed transactions
+- Simple web client for testing
 
-Архитектура: Clean Architecture (Domain, Repository, Service, Handler)
+Quick Start
 
-PostgreSQL: транзакции ACID, блокировки строк, CHECK-ограничения на неотрицательный баланс
-
-Redis: обеспечение идемпотентности входящих запросов с помощью команды SetNX
-
-Apache Kafka: асинхронная публикация событий об успешных транзакциях
-
-Docker и Docker Compose: контейнеризация базы данных и кэша
-
-Основные возможности
-
-Атомарный перевод средств между балансами пользователей внутри транзакции PostgreSQL.
-
-Защита от двойного списания денег при повторных запросах через проверку Idempotency-Key в Redis.
-
-Предотвращение ухода баланса отправителя в минус на уровне SQL-запроса и схемы базы данных.
-
-Асинхронное уведомление внешних систем через топик transfers в Kafka.
-
-Веб-интерфейс для отправки переводов и тестирования идемпотентности.
-
-Инструкция по запуску
-
-Клонирование репозитория:
+1. Clone the repository:
 git clone https://github.com/bwrrr/fintech-balance-service.git
 cd fintech-balance-service
 
-Запуск контейнеров с инфраструктурой:
+2. Start PostgreSQL and Redis:
 docker compose up -d
 
-Установка зависимостей и запуск сервиса:
+3. Download dependencies and run the server:
 go mod tidy
 go run cmd/api/main.go
 
-Открытие веб-клиента:
+4. Open the web interface:
 http://localhost:8080
 
-Пример API-запроса
+API Reference
 
-Эндпоинт: POST /api/transfer
+Endpoint: POST /api/transfer
+Content-Type: application/json
 
-Тело запроса (JSON):
+Request Body:
 {
-"idempotency_key": "transfer-uuid-001",
-"from_user_id": 1,
-"to_user_id": 2,
-"amount": 500
+  "idempotency_key": "unique-uuid-12345",
+  "from_user_id": 1,
+  "to_user_id": 2,
+  "amount": 500
 }
 
-Коды ответов:
-
-200 OK: перевод успешно выполнен.
-
-400 Bad Request: недостаточно средств или ошибка в теле запроса.
-
-409 Conflict: дублирующий запрос с уже использованным ключом идемпотентности.
-
-500 Internal Server Error: ошибка базы данных или кэша.
+Responses:
+- 200 OK: Transfer completed successfully
+- 400 Bad Request: Invalid payload or insufficient funds
+- 409 Conflict: Duplicate request (idempotency key already used)
+- 500 Internal Server Error: Database or cache failure
