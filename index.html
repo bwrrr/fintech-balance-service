@@ -1,22 +1,21 @@
-
 <!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Fintech Service</title>
+    <title>Fintech Balance Service</title>
 </head>
 <body>
-    <h2>Перевод денег</h2>
+    <h2>Money Transfer</h2>
 
-    <p>Ключ идемпотентности: <input type="text" id="idempKey"></p>
-    <p>ID Отправителя: <input type="number" id="fromUser" value="1"></p>
-    <p>ID Получателя: <input type="number" id="toUser" value="2"></p>
-    <p>Сумма: <input type="number" id="amount" value="500"></p>
+    <p>Idempotency Key: <input type="text" id="idempKey"></p>
+    <p>Sender User ID: <input type="number" id="fromUser" value="1"></p>
+    <p>Receiver User ID: <input type="number" id="toUser" value="2"></p>
+    <p>Amount: <input type="number" id="amount" value="500"></p>
 
-    <button onclick="send()">Отправить перевод</button>
+    <button onclick="send()">Submit Transfer</button>
 
-    <h3>Результат:</h3>
-    <pre id="result">Нажмите кнопку для отправки</pre>
+    <h3>Result:</h3>
+    <pre id="result">Ready for submission</pre>
 
     <script>
         document.getElementById('idempKey').value = 'key-' + Math.random().toString(36).substring(2, 7);
@@ -39,7 +38,7 @@
                 document.getElementById('result').innerText = text;
             })
             .catch(err => {
-                document.getElementById('result').innerText = 'Ошибка: ' + err;
+                document.getElementById('result').innerText = 'Error: ' + err;
             });
         }
     </script>
