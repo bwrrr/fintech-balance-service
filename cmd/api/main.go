@@ -42,6 +42,19 @@ func main() {
 	rdb := redis.NewClient(&redis.Options{Addr: redisAddr})
 	defer rdb.Close()
 
+	// sql.Open и redis.NewClient не подключаются сразу, поэтому проверяем
+	// зависимости на старте: лучше упасть сразу, чем отвечать 500 на каждый запрос.
+	pingCtx, pingCancel := context.WithTimeout(context.Background(), 5*time.Second)
+	if err := db.PingContext(pingCtx); err != nil {
+		slog.Error("postgres is unreachable", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
+	if err := rdb.Ping(pingCtx).Err(); err != nil {
+		slog.Error("redis is unreachable", slog.String("err", err.Error()))
+		os.Exit(1)
+	}
+	pingCancel()
+
 	kafkaBroker := os.Getenv("KAFKA_BROKER")
 	var kafkaWriter *kafka.Writer
 	if kafkaBroker != "" {
@@ -49,6 +62,11 @@ func main() {
 			Addr:     kafka.TCP(kafkaBroker),
 			Topic:    "transfers",
 			Balancer: &kafka.LeastBytes{},
+			// По умолчанию kafka-go держит сообщение до секунды, ожидая полный
+			// батч, и каждый перевод тормозился бы на эту секунду.
+			BatchTimeout: 10 * time.Millisecond,
+			// По умолчанию подтверждения от брокера не требуются вообще.
+			RequiredAcks: kafka.RequireAll,
 		}
 		defer kafkaWriter.Close()
 	}
@@ -61,12 +79,20 @@ func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/api/transfer", h.TransferHandler)
 	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/" {
+			http.NotFound(w, r)
+			return
+		}
 		http.ServeFile(w, r, "index.html")
 	})
 
 	srv := &http.Server{
-		Addr:    ":8080",
-		Handler: mux,
+		Addr:              ":8080",
+		Handler:           mux,
+		ReadHeaderTimeout: 5 * time.Second,
+		ReadTimeout:       10 * time.Second,
+		WriteTimeout:      15 * time.Second,
+		IdleTimeout:       60 * time.Second,
 	}
 
 	go func() {
